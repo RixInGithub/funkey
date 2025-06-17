@@ -1,0 +1,1 @@
+gcc funkeynator.c -o funkeynator && (xxd -i funkeynator > funkeynator.h) && gcc funkey.c -o funkey && rm -f funkeynator funkeynator.h
