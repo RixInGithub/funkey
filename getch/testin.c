@@ -6,30 +6,11 @@
 	#include <conio.h>
 	#include <io.h>
 	#include <fcntl.h>
-
-	DWORD dwOriginalMode=0;
-	HANDLE hOut;
-	void toggleAnsi(bool enabld) {
-		if (enabld) {
-			hOut=GetStdHandle(-11);
-			if(hOut==(HANDLE)-1)return;
-			if(!(GetConsoleMode(hOut,&dwOriginalMode)))return;
-			DWORD new=dwOriginalMode|4;
-			if((dwOriginalMode!=new)&&(!(SetConsoleMode(hOut,new))))return;
-			return;
-		}
-		SetConsoleMode(hOut,dwOriginalMode);
-	}
 #else
 	#include <sys/ioctl.h>
 	#include <unistd.h>
 	#include <signal.h>
 	#include <termios.h>
-
-	#define _isatty isatty
-	#define _fileno fileno
-
-	void toggleAnsi(bool h){}
 
 	// dangerous chatgpt utils, keep out {
 		bool _kbhit() {
