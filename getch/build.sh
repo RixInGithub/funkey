@@ -1,0 +1,1 @@
+gcc testin.c -o testin
