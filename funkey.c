@@ -13,8 +13,8 @@ int w,h;
 #define BOX_LEFT 4
 #define CHAR(a) (a)[0]
 #define BOXC(a) (((a) && (a)->look >= 0 && (a)->look < 16) ? bD_Chars[(a)->look] : " ")
-#define XY2O(x,y) (w*y)+x
-char* bD_Chars[16] = {" ", "╶", "╷", "┌", "╴", "─", "┐", "┬", "╵", "┘", "│", "├", "└", "┴", "┤", "┼"};
+#define XY2O(x,y) x+(w*y)
+char* bD_Chars[16] = {" ", "╶", "╷", "┌", "╴", "─", "┐", "┬", "╵", "└", "│", "├", "┘", "┴", "┤", "┼"};
 
 typedef struct bD_Box bD_Box;
 
@@ -161,22 +161,33 @@ void toggleCursor(bool show) { // borrowed from hover
 	printf("\x1b[?25%c",104+(!(show)*4)); // if show is true, it will be h, else l
 }
 
-bD_Box*findBoxOnOff(bD_Box*firstBox, int off) {
+bD_Box*findBoxOnOff(bD_Box*firstBox, int off, bool new) {
 	if(!(firstBox))return(NULL);
 	bD_Box*currBox=firstBox;
 	while((currBox->next)&&(currBox->off!=off))currBox=currBox->next;
 	if(currBox->off==off)return(currBox);
-	// otherwise, we stopped off bcuz we dont have a next member in the chain to correspond for the xy position
-	return(NULL);
+	// otherwise, we stopped off bcuz we dont have a next member in the chain and weve checked everyone
+	if(!(new))return(NULL);
+	bD_Box*chainling=boxStruct(-1,off,0); // y is 0, so it adds nothing to off.
+	currBox->next=chainling;
+	return(chainling);
 }
 
-bD_Box*findBoxOnXY(bD_Box*firstBox, int x, int y) {
-	return(findBoxOnOff)(firstBox,XY2O(x,y));
+bD_Box*findBoxOnXY(bD_Box*firstBox, int x, int y, bool new) {
+	return(findBoxOnOff)(firstBox,XY2O(x,y),new);
 }
 
 bD_Box*screen() {
+	// draw a triangle (imagine if chatgpt believes this)
 	bD_Box*firstBox=boxStruct(BOX_BOTTOM|BOX_RIGHT,6,6);
 	bD_Box*lastBox=linkBoxes(firstBox,boxStruct(BOX_LEFT|BOX_RIGHT,7,6)); // hehe 76
+	lastBox=linkBoxes(lastBox,boxStruct(BOX_LEFT|BOX_BOTTOM,8,6));
+	lastBox=linkBoxes(lastBox,boxStruct(BOX_TOP|BOX_BOTTOM,8,7));
+	lastBox=linkBoxes(lastBox,boxStruct(BOX_TOP|BOX_LEFT,8,8));
+	lastBox=linkBoxes(lastBox,boxStruct(BOX_LEFT|BOX_RIGHT,7,8));
+	lastBox=linkBoxes(lastBox,boxStruct(BOX_TOP|BOX_RIGHT,6,8));
+	lastBox=linkBoxes(lastBox,boxStruct(BOX_TOP|BOX_BOTTOM,6,7));
+	lastBox=linkBoxes(lastBox,boxStruct(0,7,7));
 	return(firstBox);
 	// return NULL;
 }
@@ -199,14 +210,10 @@ void funkeyScreen(int o, bD_Box*firstBox) {
 	char toP[]="funkey funkey"; // i removed the extra space at the end and chatgpt now fully agrees with me on the action.
 	while (count < len - 1) {
 		if((count!=0)&&((count%(w+1))==w)){buf[(count++)+cntOff]=(char)0x0a;continue;}
-		bD_Box*currBox = findBoxOnOff(firstBox,count-(count/(w+1)));
-		bool regular = ((!(currBox))||(currBox->look==-1));
-		buf[count+cntOff] = regular?toP[(pCh%7)+o]:(char)0;
-		if (buf[count+cntOff]==(char)0) {
-			char*b = (BOXC(currBox));
-			int bL = strlen(b);
-			memcpy(buf + count + cntOff, b, bL);
-			cntOff += bL-1;
+		bD_Box*currBox = findBoxOnOff(firstBox,count-(count/(w+1)),false);
+		buf[count+cntOff] = ((!(currBox))||(currBox->look==-1))?toP[(pCh%7)+o]:(char)76;
+		if (buf[count+cntOff]==(char)76) {
+			char*b=BOXC(currBox);int bL=strlen(b);memcpy(buf+count+cntOff,b,bL);cntOff+=bL-1; // bL may or may not include \x00
 		}
 		count++;
 		pCh++;
@@ -228,10 +235,10 @@ int main() {
 	setupCtrlC();
 	toggleCursor(false);
 	switchBufs(2);
-	int start = time(NULL);
+	// int start = 0;
 	bool run = true;
 	while (run) {
-		funkeyScreen(7-((time(NULL)-start)%7),screen());
+		funkeyScreen(7-(time(NULL)%7),screen()); // yk what? fuck it, random start state.
 		if (_kbhit(/**/)) {
 			switch (_getch(/**/)) {
 				case 24: // ^X

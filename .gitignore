@@ -1,1 +1,10 @@
+# basically build command outputs
 *.exe
+*
+
+# but make sure that we're allowing...
+!*.* # files with extensions
+!*/ # directories
+!.gitignore # this file lmfao
+!README.*
+!LICENSE
